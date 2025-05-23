@@ -2,6 +2,8 @@ import os
 import requests
 import time
 from datetime import datetime
+from threading import Thread
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Pobieranie konfiguracji ze zmiennych środowiskowych
 URLS_TO_CHECK = os.getenv("URLS_TO_CHECK", "")
@@ -61,7 +63,19 @@ def check_url(url):
             send_teams_alert(url, False, str(e))
             status_map[url] = False
 
-def main():
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'OK')
+
+def run_server():
+    port = int(os.environ.get("PORT", 8000))
+    server = HTTPServer(("0.0.0.0", port), Handler)
+    print(f"Starting HTTP server on port {port}")
+    server.serve_forever()
+
+def main_loop():
     while True:
         for url in URLS_TO_CHECK:
             check_url(url)
@@ -69,4 +83,7 @@ def main():
         time.sleep(CHECK_INTERVAL_SECONDS)
 
 if __name__ == "__main__":
-    main()
+    server_thread = Thread(target=run_server, daemon=True)
+    server_thread.start()
+
+    main_loop()
