@@ -6,9 +6,11 @@ import time
 import schedule
 from datetime import datetime
 
+# Lista URL-i do monitorowania
 URLS_TO_CHECK = os.getenv("URLS_TO_CHECK", "")
 URLS_TO_CHECK = [url.strip() for url in URLS_TO_CHECK.split(",") if url.strip()]
 
+# Parametry środowiskowe
 CHECK_INTERVAL_SECONDS = int(os.getenv("CHECK_INTERVAL_SECONDS", "300"))
 TEAMS_WEBHOOK_URL = os.getenv("TEAMS_WEBHOOK_URL")
 
@@ -101,5 +103,25 @@ def main():
         print("Oczekiwanie na kolejną rundę...\n")
         time.sleep(CHECK_INTERVAL_SECONDS)
 
+# Dummy HTTP server for Render (aby aplikacja działała jako Web Service)
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Monitoring bot is running")
+
+def run_http_server():
+    port = int(os.environ.get("PORT", 10000))  # Render używa zmiennej PORT
+    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
+    print(f"Running dummy server on port {port}")
+    server.serve_forever()
+
 if __name__ == "__main__":
+    # Uruchom dummy serwer w tle
+    threading.Thread(target=run_http_server, daemon=True).start()
+
+    # Uruchom główną pętlę monitorującą
     main()
